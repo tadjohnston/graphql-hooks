@@ -5,115 +5,202 @@ import PostUpvoter from './post-upvoter'
 import Submit from './submit'
 
 export const allPostsQuery = `
-  query allPosts($first: Int!, $skip: Int!) {
-    allPosts(orderBy: createdAt_DESC, first: $first, skip: $skip) {
-      id
-      title
-      votes
-      url
-      createdAt
-    }
-    _allPostsMeta {
-      count
+query listing($listingId: String! $withSemPhone: Boolean = false, $photoOrder: String) {
+  listing(listingId: $listingId) {
+    ... on Listing {
+      address
+      adminFee
+      apartmentAmenities
+      applicationFee
+      applicationUrl
+      availableLeaseTerms {
+        id
+        label
+      }
+      aggregates {
+        totalAvailable
+        prices {
+          low
+          high
+          bedroomBreakdown {
+            priceLow
+            bedCount
+            unitsAvailable
+          }
+        }
+        beds {
+          low
+          high
+        }
+        baths {
+          low
+          high
+        }
+      }
+      availableUnitCount
+      avgOverallRating
+      bedsCat
+      catsAllowed
+      categoryFeatures {
+        code
+        message
+      }
+      categoryRatings {
+        avgRating
+        category
+      }
+      city
+      citySeoPath
+      communityAmenities
+      covidmsg
+      desktopPhone(sem: $withSemPhone)
+      disclaimer
+      dogsAllowed
+      geoCode
+      hasHdTour
+      hasHdVideo
+      hasVideosOrTours
+      hdTourUrl
+      hdTourUrlMobile
+      hdVideoUrl
+      incomeRestrictions {
+        maxAnnualIncome
+        maxOccupants
+      }
+      isCorePaid
+      isPhoneVisible
+      isApartment
+      isActive
+      isBasic
+      isCallTwentyFourSeven
+      isCurrentFeatured
+      isCurrentSpotlight
+      lastUpdate
+      latitude
+      leadEmails
+      leadPhoneRequired
+      listingId
+      listingBedLow
+      listingBedHigh
+      listingBathLow
+      listingBathHigh
+      listingDescription
+      listingPriceLow
+      listingPriceHigh
+      listingSeoPath
+      listingSourceId
+      listingSqFtLow
+      listingSqFtHigh
+      longitude
+      mgtcoId
+      mgtcoLogo
+      mgtCoName
+      mgtCoDescription
+      mPhone(sem: $withSemPhone)
+      mustHaveAmenities
+      nearbyListings
+      neighborhoods
+      numFloorplans
+      numPhotos
+      numRatings
+      officeHours {
+        day
+        openTime
+        closeTime
+        comments
+      }
+      overallRatings {
+        count1
+        count2
+        count3
+        count4
+        count5
+      }
+      parking {
+        comment
+        isAssigned
+        perSpaceFee
+        totalSpaces
+        type
+      }
+      petPolicies {
+        comment
+        id
+        label
+        maximumPets
+        weightRestriction
+        initialFee
+        additionalRent
+        deposit
+      }
+      photoCount
+      photos(limit: 10, photoOrder: $photoOrder) {
+        path
+        caption
+      }
+      propertyLabel
+      propertyType
+      propertyWebsite
+      ptEmail
+      recommendedListings
+      selfGuidedTour
+      tourPropertyId
+      tourProvider
+      tplSource
+      revenue
+      schools {
+        attendanceZoneSchoolIds
+        schoolsDisplay
+      }
+      sortSqFt
+      sources
+      sqFootCat
+      specialTermsText
+      state
+      timeZoneId
+      totalUnits
+      unitSqFt
+      videoCallTour
+      videos {
+        caption
+        thumbnail
+        url
+      }
+      zipCode
     }
   }
+}
 `
 
-export const allPostsQueryOptions = (skip = 0) => ({
-  variables: { skip, first: 10 },
-  updateData: (prevResult, result) => ({
-    ...result,
-    allPosts: prevResult
-      ? [...prevResult.allPosts, ...result.allPosts]
-      : result.allPosts,
-  }),
+
+export const allPostsQueryOptions = (listingId) => ({
+  variables: { listingId },
 })
 
-export default function PostList() {
-  const [skip, setSkip] = useState(0)
-  const { loading, error, data, refetch } = useQuery(
+export default function PostList(props) {
+
+  console.log('listingId: ', props.listingId)
+
+  const { loading, error, data, refetch, cacheHit } = useQuery(
     allPostsQuery,
-    allPostsQueryOptions(skip)
+    {
+      variables: { listingId: props.listingId }
+    }
   )
+
+    console.log('cacheHit: ', cacheHit)
 
   if (error) return <ErrorMessage message="Error loading posts." />
   if (!data) return <div>Loading</div>
 
-  const { allPosts, _allPostsMeta } = data
+  const { listing } = data
 
-  const areMorePosts = allPosts.length < _allPostsMeta.count
   return (
     <>
-      <Submit
-        onSubmission={() => {
-          refetch({ variables: { skip: 0, first: allPosts.length } })
-        }}
-      />
-      <section>
-        <ul>
-          {allPosts.map((post, index) => (
-            <li key={post.id}>
-              <div>
-                <span>{index + 1}. </span>
-                <a href={post.url}>{post.title}</a>
-                <PostUpvoter
-                  id={post.id}
-                  votes={post.votes}
-                  onUpdate={() => {
-                    refetch({ variables: { skip: 0, first: allPosts.length } })
-                  }}
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
-        {areMorePosts ? (
-          <button onClick={() => setSkip(skip + 10)}>
-            {' '}
-            {loading && !data ? 'Loading...' : 'Show More'}{' '}
-          </button>
-        ) : (
-          ''
-        )}
-        <style jsx>{`
-          section {
-            padding-bottom: 20px;
-          }
-          li {
-            display: block;
-            margin-bottom: 10px;
-          }
-          div {
-            align-items: center;
-            display: flex;
-          }
-          a {
-            font-size: 14px;
-            margin-right: 10px;
-            text-decoration: none;
-            padding-bottom: 0;
-            border: 0;
-          }
-          span {
-            font-size: 14px;
-            margin-right: 5px;
-          }
-          ul {
-            margin: 0;
-            padding: 0;
-          }
-          button:before {
-            align-self: center;
-            border-style: solid;
-            border-width: 6px 4px 0 4px;
-            border-color: #ffffff transparent transparent transparent;
-            content: '';
-            height: 0;
-            margin-right: 5px;
-            width: 0;
-          }
-        `}</style>
-      </section>
+      <div onClick={ () => refetch({ variables: { skip: 0, first: allPosts.length } }) }>
+        CLICK REFETCH
+      </div>
+      <div>{listing.name}</div>
     </>
   )
 }
